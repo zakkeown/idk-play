@@ -134,4 +134,86 @@ struct SessionGeneratorTests {
         #expect(result.entries.count == 5)
         #expect(result.totalSeconds == 1000)
     }
+
+    // MARK: - Warm-up lead-in
+
+    @Test("A required warm-up song is pinned to the front of every run")
+    func warmupPinnedFirst() {
+        var songs = (0..<8).map { song("s\($0)", 180, ["rock"]) }
+        songs.append(song("warm", 120, ["warmup"]))
+        let criteria = GenerationCriteria(targetSeconds: 30 * 60, warmupTag: "warmup")
+
+        for _ in 0..<12 {
+            let result = SessionGenerator().generate(from: songs, criteria: criteria)
+            #expect(result.isOK)
+            #expect(result.entries.first?.tags.contains("warmup") == true)
+        }
+    }
+
+    @Test("Missing warm-up song reports a shortfall")
+    func warmupShortfallWhenMissing() {
+        let songs = (0..<5).map { song("s\($0)", 180, ["rock"]) }
+        let criteria = GenerationCriteria(targetSeconds: 30 * 60, warmupTag: "warmup")
+        let result = SessionGenerator().generate(from: songs, criteria: criteria)
+
+        #expect(!result.isOK)
+        #expect(result.shortfalls.contains(.notEnoughSongs(tag: "warmup", needed: 1, available: 0)))
+    }
+
+    @Test("Warm-up floor merges with an explicit tag minimum (max, not sum)")
+    func warmupMergesWithTagMinimum() {
+        // Exactly 2 warm-up songs; the user also asked for at least 2. The warm-up
+        // floor must stay 2 (max(2, 1)) — summing to 3 would falsely report a shortfall.
+        var songs = (0..<2).map { song("w\($0)", 120, ["warmup"]) }
+        songs += (0..<5).map { song("r\($0)", 180, ["rock"]) }
+        let criteria = GenerationCriteria(
+            targetSeconds: 30 * 60,
+            tagMinimums: [TagRequirement(tag: "warmup", count: 2)],
+            warmupTag: "warmup"
+        )
+        let result = SessionGenerator().generate(from: songs, criteria: criteria)
+
+        #expect(result.isOK)
+        #expect(result.entries.filter { $0.tags.contains("warmup") }.count == 2)
+        #expect(result.entries.first?.tags.contains("warmup") == true)
+    }
+
+    @Test("A nil warm-up tag leaves ordering untouched")
+    func warmupNilDoesNotPin() {
+        // Deterministic RNG: with no warm-up tag, the lone warm-up-tagged song is not
+        // forced to the front. (Same seed proves the change is order-stable too.)
+        var songs = [song("warm", 180, ["warmup"])]
+        songs += (0..<6).map { song("s\($0)", 180, ["rock"]) }
+        let criteria = GenerationCriteria(targetSeconds: 30 * 60, warmupTag: nil)
+
+        var sawNonWarmupFirst = false
+        for _ in 0..<12 {
+            let result = SessionGenerator().generate(from: songs, criteria: criteria)
+            if result.entries.first?.tags.contains("warmup") == false { sawNonWarmupFirst = true; break }
+        }
+        #expect(sawNonWarmupFirst)
+    }
+
+    @Test("Same seed and criteria yield identical lists")
+    func deterministicWithSeed() {
+        let songs = (0..<12).map { song("s\($0)", 200, ["rock"]) }
+        let criteria = GenerationCriteria(targetSeconds: 20 * 60)
+        var a = SeededRNG(seed: 42), b = SeededRNG(seed: 42)
+        let ra = SessionGenerator().generate(from: songs, criteria: criteria, using: &a)
+        let rb = SessionGenerator().generate(from: songs, criteria: criteria, using: &b)
+        #expect(ra.entries.map(\.id) == rb.entries.map(\.id))
+    }
+}
+
+/// Deterministic SplitMix64 generator for repeatable test runs.
+struct SeededRNG: RandomNumberGenerator {
+    private var state: UInt64
+    init(seed: UInt64) { state = seed }
+    mutating func next() -> UInt64 {
+        state &+= 0x9E3779B97F4A7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        return z ^ (z >> 31)
+    }
 }

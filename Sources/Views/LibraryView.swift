@@ -3,7 +3,7 @@ import SwiftData
 
 struct LibraryView: View {
     @Environment(\.modelContext) private var context
-    @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
+    @Query private var songs: [Song]
 
     @State private var searchText = ""
     @State private var selectedTag: String?
@@ -17,6 +17,7 @@ struct LibraryView: View {
             let matchesTag = selectedTag == nil || song.tags.contains(selectedTag!)
             return matchesText && matchesTag
         }
+        .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     }
 
     var body: some View {

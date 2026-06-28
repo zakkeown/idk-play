@@ -71,6 +71,13 @@ struct SessionGenerator {
             requiredCounts[req.tag, default: 0] += req.count
         }
 
+        // A warm-up is a floor of one, merged with any explicit minimum for the same
+        // tag via max (not sum) so requesting both doesn't over-require. The matching
+        // song is later pinned to the front; here it just guarantees one gets picked.
+        if let warmup = criteria.warmupTag, !warmup.isEmpty {
+            requiredCounts[warmup] = max(requiredCounts[warmup] ?? 0, 1)
+        }
+
         func availability(_ tag: String) -> Int {
             pool.reduce(0) { $0 + ($1.tags.contains(tag) ? 1 : 0) }
         }
@@ -128,6 +135,13 @@ struct SessionGenerator {
 
         // 3. Shuffle final order for a varied practice flow.
         selected.shuffle(using: &rng)
+
+        // 3a. Pin a warm-up song to the front — done after the shuffle so it isn't
+        //     undone. The floor in step 1 guarantees one was picked when available.
+        if let warmup = criteria.warmupTag, !warmup.isEmpty,
+           let idx = selected.firstIndex(where: { $0.tags.contains(warmup) }), idx != 0 {
+            selected.insert(selected.remove(at: idx), at: 0)
+        }
 
         // 4. Report any unmet floors.
         var shortfalls: [GenerationResult.Shortfall] = []

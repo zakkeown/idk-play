@@ -18,6 +18,15 @@ struct IDKPlayApp: App {
     /// app is built with a signing team that has the iCloud capability.
     static func makeContainer() -> ModelContainer {
         let schema = Schema([Song.self, PracticeSession.self, SessionEntry.self])
+
+        // UI tests pass `-uitest-ephemeral-store` so each run starts from an empty,
+        // in-memory library — the simulator otherwise persists data across launches,
+        // making count-based assertions flaky.
+        if ProcessInfo.processInfo.arguments.contains("-uitest-ephemeral-store") {
+            let memory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            return try! ModelContainer(for: schema, configurations: memory)
+        }
+
         do {
             let cloud = ModelConfiguration(schema: schema, cloudKitDatabase: .automatic)
             return try ModelContainer(for: schema, configurations: cloud)

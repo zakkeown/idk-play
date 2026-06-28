@@ -7,10 +7,15 @@ struct GenerateView: View {
 
     @State private var targetMinutes = 30
     @State private var requirements: [TagRequirement] = []
-    @State private var result: GenerationResult?
+    @State private var includeWarmup = false
+    @State private var warmupSeeded = false
+    @State private var session = EditableSession(entries: [])
+    @State private var hasResult = false
+    @State private var shortfalls: [GenerationResult.Shortfall] = []
     @State private var savedConfirmation = false
 
     private var allTags: [String] { songs.distinctTags }
+    private var warmupTag: String? { WarmupTag.detect(in: allTags) }
 
     var body: some View {
         NavigationStack {
@@ -24,6 +29,18 @@ struct GenerateView: View {
 
                 Section("Target length") {
                     Stepper("\(targetMinutes) min", value: $targetMinutes, in: 5...300, step: 5)
+                }
+
+                if let warmupTag {
+                    Section {
+                        Toggle(isOn: $includeWarmup) {
+                            Text("Start with a warm-up")
+                            Text("Lead with one “\(warmupTag)” song.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityIdentifier("warmupToggle")
+                    }
                 }
 
                 Section("Tag minimums") {
@@ -63,9 +80,12 @@ struct GenerateView: View {
                     .listRowBackground(LinearGradient.brand)
                 }
 
-                if let result {
+                if hasResult {
                     GenerationResultView(
-                        result: result,
+                        session: $session,
+                        shortfalls: shortfalls,
+                        libraryCandidates: songs.map(SongCandidate.init),
+                        onEdit: { shortfalls = [] },
                         onRegenerate: generate,
                         onSave: save
                     )
@@ -75,32 +95,48 @@ struct GenerateView: View {
             .alert("Saved to archive", isPresented: $savedConfirmation) {
                 Button("OK", role: .cancel) {}
             }
+            .onAppear(perform: seedWarmupDefault)
+            .onChange(of: warmupTag) { _, _ in seedWarmupDefault() }
         }
+    }
+
+    /// Default the warm-up toggle on the first time a warm-up tag appears, without
+    /// clobbering the user's later choice as the library reloads.
+    private func seedWarmupDefault() {
+        guard !warmupSeeded, warmupTag != nil else { return }
+        includeWarmup = true
+        warmupSeeded = true
     }
 
     private func generate() {
         let criteria = GenerationCriteria(
             targetSeconds: targetMinutes * 60,
             tagMinimums: requirements.filter { !$0.tag.isEmpty },
-            allowedTags: []
+            allowedTags: [],
+            warmupTag: includeWarmup ? warmupTag : nil
         )
-        result = SessionGenerator().generate(
+        let result = SessionGenerator().generate(
             from: songs.map(SongCandidate.init),
             criteria: criteria
         )
+        session = EditableSession(result)
+        shortfalls = result.shortfalls
+        hasResult = true
     }
 
     private func save() {
-        guard let result else { return }
-        let session = PracticeSession(title: defaultTitle, dateCreated: Date())
-        context.insert(session)
-        for (index, candidate) in result.entries.enumerated() {
+        guard hasResult else { return }
+        let practice = PracticeSession(title: defaultTitle, dateCreated: Date())
+        context.insert(practice)
+        for (index, candidate) in session.entries.enumerated() {
             let entry = SessionEntry(position: index, candidate: candidate)
-            entry.session = session
+            entry.session = practice
             context.insert(entry)
         }
         try? context.save()
-        self.result = nil
+        session = EditableSession(entries: [])
+        hasResult = false
+        shortfalls = []
         savedConfirmation = true
     }
 

@@ -12,8 +12,11 @@ struct TagRequirement: Identifiable, Hashable {
 /// - `targetSeconds`: a hard time ceiling — the generated total must not exceed it.
 /// - `tagMinimums`: hard floors — at least N songs carrying each tag.
 /// - `allowedTags`: optional pool restriction; empty means any song is eligible.
+/// - `warmupTag`: when set, require at least one song carrying this tag and pin it
+///   to the front of the list (a "warm up first" lead-in). `nil` disables the behavior.
 struct GenerationCriteria: Equatable {
     var targetSeconds: Int = 30 * 60
     var tagMinimums: [TagRequirement] = []
     var allowedTags: [String] = []
+    var warmupTag: String? = nil
 }
