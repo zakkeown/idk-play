@@ -38,3 +38,17 @@ final class Song {
 
     var url: URL? { URL(string: urlString) }
 }
+
+extension Song {
+    /// Build a library song from a shared-import draft. The draft type is
+    /// SwiftData-free so the Share Extension can produce one; the app does this
+    /// bridging step when it drains the import queue.
+    convenience init(draft: SongDraft) {
+        self.init(
+            title: draft.title,
+            urlString: draft.urlString,
+            durationSeconds: draft.durationSeconds,
+            tags: draft.tags
+        )
+    }
+}

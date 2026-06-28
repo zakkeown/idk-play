@@ -17,6 +17,9 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+    dependencies:
+      - target: ShareExtension
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.idkplay.IDKPlay
@@ -32,6 +35,23 @@ targets:
         # iPad multitasking requires all four orientations; iPhone stays portrait.
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+  # Share Extension: adds IDK Play to the system share sheet. The pure import logic in
+  # Sources/Share is compiled into this target too (a second binary — sharing a folder
+  # in the app target does not make it visible here).
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+      - path: Sources/Share
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.idkplay.IDKPlay.ShareExtension
+        PRODUCT_NAME: ShareExtension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ShareExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
   IDKPlayTests:
     type: bundle.unit-test
     platform: iOS

@@ -15,6 +15,11 @@ link in whatever native handler owns it.
   tag it carries. Infeasible requests return a best-effort list plus a clear shortfall.
 - **Sessions** — generated lists are archived as fixed setlists. Open one to replay it;
   tapping an entry opens the link in the native handler (`openURL`).
+- **Share to add** — a Share Extension puts IDK Play in the system share sheet, so you
+  can add a link straight from YouTube, Ultimate Guitar, or any browser. It detects the
+  source (auto-tagging `youtube` / `ultimate-guitar`), prefills the title, and for
+  YouTube makes a best-effort fetch of the video length. A quick confirm sheet lets you
+  tweak before saving; the song appears in the Library the next time you open the app.
 
 ## Stack
 
@@ -37,7 +42,10 @@ Cross-device sync needs a signed build:
 
 1. In Xcode, select the `IDKPlay` target → Signing & Capabilities → set your **Team**.
 2. Change the bundle id and the iCloud container in `IDKPlay.entitlements` to your own
-   reverse-domain (e.g. `iCloud.com.yourname.IDKPlay`).
+   reverse-domain (e.g. `iCloud.com.yourname.IDKPlay`). The Share Extension hands songs
+   to the app through the App Group `group.com.idkplay.IDKPlay`, declared in both
+   `IDKPlay.entitlements` and `ShareExtension/ShareExtension.entitlements` — if you
+   change it, change it in both, and keep `SharedImportQueue.appGroupID` in sync.
 3. Build to a device signed into iCloud. The SwiftData schema is CloudKit-clean
    (defaults everywhere, optional relationships with inverses, no unique constraints),
    so no migration is required.
@@ -50,3 +58,9 @@ xcodebuild test -scheme IDKPlay -destination 'platform=iOS Simulator,name=<devic
 
 `SessionGeneratorTests` covers the generator: time ceiling, tag floors, multi-tag
 counting, rarest-first fill, shortfall reporting, and run-to-run variety.
+
+`ShareImportTests` covers the share-import core (the logic the extension reuses):
+source detection, YouTube video-ID extraction across URL shapes, length parsing from
+watch-page markup, building a draft from a URL / text blob / explicit title, and the
+App-Group hand-off queue's enqueue/drain/de-dup. The extension's view controller is a
+thin shim over this tested code.
