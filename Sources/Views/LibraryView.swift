@@ -48,6 +48,7 @@ struct LibraryView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { showingAdd = true } label: { Image(systemName: "plus") }
+                        .accessibilityIdentifier("addSongButton")
                 }
             }
             .sheet(isPresented: $showingAdd) { SongEditView(song: nil) }

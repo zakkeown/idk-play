@@ -34,10 +34,12 @@ struct SongEditView: View {
             Form {
                 Section("Song") {
                     TextField("Title", text: $title)
+                        .accessibilityIdentifier("titleField")
                     TextField("Link (URL)", text: $urlString)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .accessibilityIdentifier("urlField")
                     DurationField(seconds: $seconds)
                 }
                 Section("Tags") {
@@ -55,7 +57,9 @@ struct SongEditView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save).disabled(!canSave)
+                    Button("Save", action: save)
+                        .disabled(!canSave)
+                        .accessibilityIdentifier("saveSongButton")
                 }
             }
         }
@@ -81,6 +85,7 @@ struct SongEditView: View {
                 notes: notes
             ))
         }
+        try? context.save()
         dismiss()
     }
 

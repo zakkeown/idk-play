@@ -12,8 +12,9 @@ struct GenerationResultView: View {
                 Text("Total")
                 Spacer()
                 Text(result.totalSeconds.asDurationString)
-                    .bold()
+                    .fontWeight(.bold)
                     .monospacedDigit()
+                    .foregroundStyle(LinearGradient.brand)
             }
             Text("\(result.entries.count) song\(result.entries.count == 1 ? "" : "s")")
                 .foregroundStyle(.secondary)

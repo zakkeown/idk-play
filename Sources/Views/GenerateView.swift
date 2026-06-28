@@ -52,9 +52,15 @@ struct GenerateView: View {
                 }
 
                 Section {
-                    Button("Generate", action: generate)
-                        .disabled(songs.isEmpty)
-                        .accessibilityIdentifier("generateButton")
+                    Button(action: generate) {
+                        Text("Generate")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(.white)
+                    }
+                    .accessibilityIdentifier("generateButton")
+                    .disabled(songs.isEmpty)
+                    .listRowBackground(LinearGradient.brand)
                 }
 
                 if let result {
@@ -93,6 +99,7 @@ struct GenerateView: View {
             entry.session = session
             context.insert(entry)
         }
+        try? context.save()
         self.result = nil
         savedConfirmation = true
     }
