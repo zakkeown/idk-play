@@ -4,6 +4,7 @@ import SwiftUI
 /// + actions). The `session` binding is the working copy the user can hand-tune before
 /// archiving; `shortfalls` describe the original generation and clear on first edit.
 struct GenerationResultView: View {
+    @Environment(\.openURL) private var openURL
     @Binding var session: EditableSession
     let shortfalls: [GenerationResult.Shortfall]
     /// Full library pool, used to offer songs not already in the list.
@@ -49,7 +50,13 @@ struct GenerationResultView: View {
         if !session.entries.isEmpty {
             Section {
                 ForEach(session.entries) { candidate in
-                    CandidateRow(candidate: candidate)
+                    Button {
+                        if let url = candidate.url { openURL(url) }
+                    } label: {
+                        CandidateRow(candidate: candidate)
+                    }
+                    .tint(.primary)
+                    .disabled(candidate.url == nil)
                 }
                 .onMove { session.move(fromOffsets: $0, toOffset: $1); onEdit() }
                 .onDelete { session.remove(atOffsets: $0); onEdit() }
@@ -60,7 +67,7 @@ struct GenerationResultView: View {
                     EditButton().font(.callout.weight(.regular)).textCase(nil)
                 }
             } footer: {
-                Text("Drag to reorder, swipe to remove.")
+                Text("Tap to open a link, drag to reorder, swipe to remove.")
             }
         }
 
@@ -109,6 +116,8 @@ private struct CandidateRow: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+            Image(systemName: "arrow.up.forward.app")
+                .foregroundStyle(candidate.url == nil ? Color.secondary : Color.accentColor)
         }
     }
 }

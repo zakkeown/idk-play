@@ -10,6 +10,8 @@ struct SongCandidate: Identifiable, Hashable {
     let urlString: String
     let durationSeconds: Int
     let tags: [String]
+
+    var url: URL? { URL(string: urlString) }
 }
 
 extension SongCandidate {
